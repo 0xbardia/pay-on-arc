@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "AiRequestLog"
+ADD COLUMN "inputMetadata" JSONB,
+ADD COLUMN "responseSummary" TEXT,
+ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

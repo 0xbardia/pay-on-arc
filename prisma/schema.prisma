@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PaymentLinkStatus {
+  DRAFT
+  ACTIVE
+  PAID
+  EXPIRED
+  DISABLED
+}
+
+enum TransactionStatus {
+  SIMULATED
+  PENDING
+  CONFIRMED
+  FAILED
+  REFUNDED
+}
+
+enum AiRequestType {
+  PAYMENT_INSIGHT
+  TRANSACTION_SUMMARY
+  RISK_REVIEW
+  SUPPORT
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String?        @unique
+  name          String?
+  merchantName  String?
+  merchantSlug  String?        @unique
+  merchantEmail String?
+  supportEmail  String?
+  websiteUrl    String?
+  logoUrl       String?
+  lastLoginAt   DateTime?
+  wallets       Wallet[]
+  paymentLinks  PaymentLink[]
+  transactions  Transaction[]
+  aiRequestLogs AiRequestLog[]
+  apiKeys       ApiKey[]
+  webhooks      WebhookEndpoint[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  keyPrefix  String
+  keyHash    String    @unique
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([revokedAt])
+}
+
+model WebhookEndpoint {
+  id             String            @id @default(cuid())
+  userId         String
+  name           String
+  url            String
+  secretHash     String
+  secretPrefix   String
+  enabled        Boolean           @default(true)
+  lastSuccessAt  DateTime?
+  lastFailureAt  DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries     WebhookDelivery[]
+
+  @@index([userId])
+  @@index([enabled])
+}
+
+model WebhookDelivery {
+  id             String          @id @default(cuid())
+  webhookId      String
+  eventId        String
+  eventType      String
+  status         String          @default("pending")
+  attempt        Int             @default(0)
+  responseStatus Int?
+  responseBody   String?
+  payload        Json
+  requestHeaders Json?
+  nextAttemptAt  DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime        @default(now())
+  webhook        WebhookEndpoint @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([eventId])
+  @@index([status])
+  @@index([nextAttemptAt])
+}
+
+model Wallet {
+  id              String    @id @default(cuid())
+  userId          String
+  address         String    @unique
+  label           String?
+  network         String    @default("evm")
+  chainId         Int?
+  connectorName   String?
+  lastConnectedAt DateTime?
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([chainId])
+}
+
+model PaymentLink {
+  id            String            @id @default(cuid())
+  userId        String
+  slug          String            @unique
+  title         String
+  description   String?
+  amount        Decimal           @db.Decimal(18, 6)
+  currency      String            @default("USDC")
+  status        PaymentLinkStatus @default(ACTIVE)
+  expiresAt     DateTime?
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+  aiRequestLogs AiRequestLog[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  userId          String
+  paymentLinkId   String?
+  txHash          String?           @unique
+  payerAddress    String?
+  recipientAddress String?
+  amount          Decimal           @db.Decimal(18, 6)
+  currency        String            @default("USDC")
+  status          TransactionStatus @default(PENDING)
+  metadata        Json?
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentLink     PaymentLink?      @relation(fields: [paymentLinkId], references: [id], onDelete: SetNull)
+  aiRequestLogs   AiRequestLog[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([paymentLinkId])
+  @@index([status])
+}
+
+model AiRequestLog {
+  id            String        @id @default(cuid())
+  userId        String?
+  paymentLinkId String?
+  transactionId String?
+  type          AiRequestType
+  promptTokens  Int           @default(0)
+  outputTokens  Int           @default(0)
+  provider      String        @default("openrouter")
+  model         String?
+  status        String        @default("placeholder")
+  inputMetadata Json?
+  responseSummary String?
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  paymentLink   PaymentLink?  @relation(fields: [paymentLinkId], references: [id], onDelete: SetNull)
+  transaction   Transaction?  @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([type])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  walletAddress String?
+  action        String
+  entityType    String?
+  entityId      String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([walletAddress])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model AdminSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
