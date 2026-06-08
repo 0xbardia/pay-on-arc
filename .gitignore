@@ -13,3 +13,4 @@ prisma/dev.db
 .DS_Store
 .vercel/
 coverage/
+tsconfig.tsbuildinfo
