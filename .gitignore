@@ -1,0 +1,22 @@
+node_modules/
+.next/
+.env
+.env.*
+!.env.example
+*.log
+logs/
+backups/
+*.tar.gz
+*.sqlite
+*.db
+prisma/dev.db
+.DS_Store
+.vercel/
+coverage/
+
+# Env backups / local secrets
+.env.*
+!.env.example
+*.backup
+*.backup.*
+tsconfig.tsbuildinfo
