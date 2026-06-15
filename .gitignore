@@ -20,3 +20,4 @@ coverage/
 *.backup
 *.backup.*
 tsconfig.tsbuildinfo
+tsconfig.tsbuildinfo
