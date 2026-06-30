@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/payonarc_ci?schema=public
+      SESSION_SECRET: ci-session-secret-change-me-32-characters-min
+      NEXT_PUBLIC_APP_URL: https://payonarc.example
+      NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: ""
+      ADMIN_PANEL_PATH: /secure-admin
+      ADMIN_WALLETS: ""
+      NEXT_PUBLIC_ARC_CHAIN_ID: "5042002"
+      NEXT_PUBLIC_ARC_RPC_URL: https://rpc.testnet.arc.network
+      NEXT_PUBLIC_ARC_EXPLORER_URL: https://testnet.arcscan.app
+      NEXT_PUBLIC_ARC_USDC_ADDRESS: "0x3600000000000000000000000000000000000000"
+      NEXT_PUBLIC_ARC_USDC_DECIMALS: "6"
+      ENABLE_SIMULATED_PAYMENTS: "false"
+      OPENROUTER_API_KEY: ""
+      OPENROUTER_MODEL: openai/gpt-4o-mini
+      AI_COPILOT_ENABLED: "false"
+      PRISMA_QUERY_LOGGING: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate
+
+      - name: TypeScript
+        run: pnpm exec tsc --noEmit --pretty false
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
